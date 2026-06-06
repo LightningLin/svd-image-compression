@@ -26,5 +26,8 @@ Pic3 is a furry I drew. Pics 4 & 5 are photos I took.
 MIT
 
 ## Citation
-If you use this code, please cite the project repository: [https://github.com/LightningLin/svd-image-compression](https://github.com/LightningLin/svd-image-compression)  
+If you use this code, please cite the project repository:  
+[https://github.com/LightningLin/svd-image-compression](https://github.com/LightningLin/svd-image-compression)   
+This project has been archived on Zenodo. You can also use the following DOI to cite it:  
+[https://zenodo.org/badge/DOI/10.5281/zenodo.20573329](https://doi.org/10.5281/zenodo.20573329)(Release v1.0.1)  
 If you like this project, please consider giving it a star ⭐. Your support is much appreciated:)
