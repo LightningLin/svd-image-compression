@@ -18,6 +18,10 @@ This repository contains MATLAB code for compressing colour images using low‑r
 3. Run `svd_compress` – a file selection dialog will appear.
 4. Choose an image (recommended size: 256×256). The program will compute all results and save figures to `../code/figures/`.
 
+## Example pictures info
+Pics 1 & 2 are from [pexels](https://www.pexels.com/).
+Pic3 is a furry I drew. Pics 4 & 5 are photos I took.
+
 ## License
 MIT
 
