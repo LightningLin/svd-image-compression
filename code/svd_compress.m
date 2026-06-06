@@ -1,93 +1,59 @@
-function plot_all_results(I_orig, U, S, V, psnr_vals, ratio_vals, s, m, n, channels, save_dir)
-% 生成全部4张图表并保存到指定文件夹
-    if nargin < 11 || isempty(save_dir)
-        save_dir = '.';
+function svd_compress(img_path, mode, save_dir)
+% SVD 图像压缩主程序
+% 输入：
+%   img_path - 图片路径（可选，不提供则弹窗）
+%   mode     - 'auto'（保留彩色）或 'gray'（强制灰度）
+%   save_dir - 图片保存文件夹（可选，默认为 './figures'）
+
+    if nargin < 1 || isempty(img_path)
+        img_path = [];
     end
+    if nargin < 2 || isempty(mode)
+        mode = 'auto';
+    end
+    if nargin < 3 || isempty(save_dir)
+        save_dir = './figures';
+    end
+
+    % 创建保存目录（如果不存在）
     if ~exist(save_dir, 'dir')
         mkdir(save_dir);
+        fprintf('创建文件夹: %s\n', save_dir);
     end
+
+    %% 1. 加载并预处理图像
+    [I_orig, I_double, m, n, channels] = img_preprocess(img_path, mode);
+    fprintf('图像尺寸: %d x %d, 通道数: %d\n', m, n, channels);
     
-    is_color = (channels == 3);
-    
-    %% 图1：奇异值曲线
-    figure('Name', 'Singular Values');
-    if ~is_color
-        plot(s, 'o-', 'LineWidth', 1.5);
-        legend('Grayscale');
+    %% 2. 分析（灰度或彩色）
+    if channels == 1
+        [psnr_vals, ratio_vals, U, S, V, s] = svd_analysis(I_double);
+        plot_all_results(I_orig, U, S, V, psnr_vals, ratio_vals, s, m, n, channels, save_dir);
     else
-        hold on;
-        colors = {'r','g','b'};
+        psnr_vals_all = zeros(3, 256);
+        ratio_vals_all = zeros(3, 256);
+        s_all = cell(3,1);
+        U_all = cell(3,1); S_all = cell(3,1); V_all = cell(3,1);
         for ch = 1:3
-            plot(s{ch}, 'o-', 'LineWidth', 1.5, 'Color', colors{ch});
+            I_ch = I_double(:,:,ch);
+            [psnr_vals, ratio_vals, U, S, V, s] = svd_analysis(I_ch);
+            psnr_vals_all(ch,:) = psnr_vals;
+            ratio_vals_all(ch,:) = ratio_vals;
+            s_all{ch} = s;
+            U_all{ch} = U; S_all{ch} = S; V_all{ch} = V;
         end
-        legend('Red', 'Green', 'Blue');
-        hold off;
+        psnr_vals_mean = mean(psnr_vals_all, 1);
+        ratio_vals = ratio_vals_all(1,:);
+        plot_all_results(I_orig, U_all, S_all, V_all, psnr_vals_mean, ratio_vals, s_all, m, n, channels, save_dir);
     end
-    xlabel('Index i'); ylabel('\sigma_i');
-    title('Singular Value Decay'); grid on;
-    saveas(gcf, fullfile(save_dir, 'singular_values.png'));
     
-    %% 图2：PSNR vs k（带30dB交点标注）
-    figure('Name', 'PSNR vs k');
-    set(gcf, 'Color', 'white');
-    plot(1:256, psnr_vals, 'r-', 'LineWidth', 2);
-    xlabel('Number of singular values k'); ylabel('PSNR (dB)');
-    title('PSNR vs. k'); grid on;
-    hold on;
-    yline(30, 'k--', 'LineWidth', 1.5);
-    % 找到第一个 PSNR >= 30 的 k 值
-    k30 = find(psnr_vals >= 30, 1, 'first');
-    if ~isempty(k30)
-        psnr30 = psnr_vals(k30);
-        plot(k30, psnr30, 'bo', 'MarkerSize', 8, 'MarkerFaceColor', 'b');
-        text(k30-15, psnr30+10, sprintf('(k=%d, %.1f dB)', k30, psnr30), ...
-            'FontSize', 9, 'BackgroundColor', 'w', 'EdgeColor', 'k');
+    %% 3. 输出表格
+    fprintf('\n====== Key results ======\n');
+    fprintf('k\t压缩比\t\tPSNR (dB)\n');
+    k_show = [5, 10, 20, 30, 50, 80, 100, 150, 200, 256];
+    for k = k_show
+        fprintf('%d\t%.2f\t\t%.2f\n', k, ratio_vals(k), psnr_vals_mean(k));
     end
-    % 标注30dB线文字
-    text(180, 35, 'PSNR = 30 dB (visually lossless)', 'FontSize', 10);
-    hold off;
-    set(gca, 'Color', 'white', 'XColor', 'k', 'YColor', 'k');
-    saveas(gcf, fullfile(save_dir, 'psnr_vs_k.png'));
-        
-    %% 图3：率失真曲线
-    figure('Name', 'Rate-Distortion');
-    plot(ratio_vals, psnr_vals, 'b-', 'LineWidth', 2);
-    xlabel('Compression Ratio'); ylabel('PSNR (dB)');
-    title('Rate-Distortion Curve'); grid on;
-    hold on;
-    k_markers = [5, 10, 20, 50, 100];
-    for k = k_markers
-        ratio_k = ratio_vals(k);
-        psnr_k = psnr_vals(k);
-        plot(ratio_k, psnr_k, 'ro', 'MarkerSize', 8, 'MarkerFaceColor', 'r');
-        text(ratio_k, psnr_k+5, sprintf('k=%d', k), 'FontSize', 10, 'HorizontalAlignment', 'center');
-    end
-    hold off;
-    saveas(gcf, fullfile(save_dir, 'rate_distortion.png'));
-    
-    %% 图4：重建对比图
-    figure('Name', 'Reconstruction Comparison');
-    k_disp = [5, 10, 20, 50, 100];
-    if is_color
-        U_all = U; S_all = S; V_all = V;
-        subplot(2,3,1); imshow(I_orig); title('Original');
-        for idx = 1:5
-            k = k_disp(idx);
-            R_k = U_all{1}(:,1:k) * S_all{1}(1:k,1:k) * V_all{1}(:,1:k)';
-            G_k = U_all{2}(:,1:k) * S_all{2}(1:k,1:k) * V_all{2}(:,1:k)';
-            B_k = U_all{3}(:,1:k) * S_all{3}(1:k,1:k) * V_all{3}(:,1:k)';
-            I_k = cat(3, R_k, G_k, B_k);
-            I_k = max(0, min(1, I_k));
-            subplot(2,3,idx+1); imshow(I_k); title(sprintf('k = %d', k));
-        end
-    else
-        subplot(2,3,1); imshow(I_orig); title('Original');
-        for idx = 1:5
-            k = k_disp(idx);
-            I_k = U(:,1:k) * S(1:k,1:k) * V(:,1:k)';
-            subplot(2,3,idx+1); imshow(I_k); title(sprintf('k = %d', k));
-        end
-    end
-    sgtitle('SVD Reconstruction Comparison');
-    saveas(gcf, fullfile(save_dir, 'reconstruction_comparison.png'));
+    fprintf('==========================================\n');
+    fprintf('图片已保存至: %s\n', save_dir);
 end
