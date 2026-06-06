@@ -22,4 +22,5 @@ This repository contains MATLAB code for compressing colour images using low‑r
 MIT
 
 ## Citation
-If you use this code, please cite the project repository: [https://github.com/LightningLin/svd-image-compression](https://github.com/LightningLin/svd-image-compression)
+If you use this code, please cite the project repository: [https://github.com/LightningLin/svd-image-compression](https://github.com/LightningLin/svd-image-compression)  
+If you like this project, please consider giving it a star ⭐. Your support is much appreciated:)
